@@ -1,0 +1,369 @@
+
+---
+title: "STAT340 HW06: Estimation"
+author: "TODO: Reid Sroda"
+date: "October 2022"
+output: html_document
+---
+
+***
+
+TODO: If you worked with any other students on this homework, please list their names and NetIDs here.
+
+***
+
+## Instructions
+
+Update the "author" and "date" fields in the header and
+complete the exercises below.
+Knit the document, and submit **both the HTML and RMD** files to Canvas.
+
+__Due date:__ October 27, 2022 at 11:59pm.
+
+---
+
+This homework will review our discussion of estimation from this week.
+
+## 1) Closing the loop
+
+In our discussion of the Universal Widgets of Madison company from lecture, we said that we were interested in two questions:
+
+1. Estimating the probability $p$ that a widget is functional.
+2. How many widgets should be in a batch to ensure that (with high probability) a batch ships with at least $5$ functional widgets in it?
+
+We discussed question (1) at length in lecture.
+What about question (2)?
+Our client wants to know how many widgets should ship in each batch so as to ensure that the probability there are at least $5$ functional widgets in a batch is at least $0.99$.
+
+Now, suppose that we have observed data and estimated $p$ to be $0.82$.
+
+Use everything you know so far in this course to give a recommendation to the client.
+Be sure to explain clearly what you are doing and why.
+If there are any steps, assumptions, etc., that you are not 100% pleased with, feel free to point them out.
+
+__Note:__ there are at least two "obvious" ways to solve this problem. One is based on using Monte Carlo (i.e., assume $p=0.82$ is the truth, and try generating batches of different sizes, etc.).
+The other uses direct computation of probabilities, using basic facts about Binomial RVs.
+Neither of these is necessarily better than the other, and you do not need to use both approaches to receive full credit.
+Indeed, you are free to try doing something else entirely, if you wish.
+Just explain clearly what you are doing and why!
+
+```{r}
+NMC = 1000
+trials = rep(0,NMC)
+trial = function(n){
+  return(sum(rbinom(n,1,.82)))
+}
+for( i in 1:NMC)
+  trials[i] = trial(10)
+
+trials = trials >= 5
+sum(trials) / NMC
+```
+
+***
+Here we are simulating 1000 random binomial trials with a probability of success of .82 which represents the probability of a functioning widget. We countinue to increase the sample size until the percentage of sucesssful trials overcomes .99
+
+***
+
+## 2 ) Permutation testing for correlatedness
+
+We mentioned in lecture that independence and uncorrelatedness are usually things that we have to assume of our data, but that there are, in some settings, ways to detect the presence or absence of dependence.
+This problem will give an example of that, using our old friend the permutation test.
+
+Suppose that we observe pairs $(X_i, Y_i)$ where $X_i, Y_i \in \mathbb{R}$ for each $i=1,2,\dots,n$, with all $n$ pairs being independent of one another.
+That is, $(X_i,Y_i)$ is independent of $(X_j,Y_j)$ for $i \neq j$.
+
+Most typically, we think of these as predictor-response pairs.
+For example, the $X_i$ might represent years of education and $Y_i$ might represent income at age 30, and we want to predict $Y$ from a given value of $X$.
+These kinds of problems are probably familiar to you from your discussion of regression in STAT240, and that's a problem we'll return to in a couple of weeks.
+For now, though, let's forget about trying to estimate a regression coefficient or predict anything and instead just try to assess whether or not the $X$s and $Y$s are correlated at all.
+
+If $X_i$ and $Y_i$ are completely uncorrelated over all $i=1,2,\dots,n$, then, much like in permutation testing, it shouldn't matter what order the $Y$s appear with respect to the $X$s.
+That is, we should be able to shuffle the responses (i.e., the $Y_i$ terms) and not much should change in terms of how the data "looks".
+In particular, the correlation between the $X$s and $Y$s should not change much on average.
+
+### Part a: reading data, plotting and the eyeball test
+
+The following code reads the horsepower (`hp`) and miles per gallon (`mpg`) columns from the famous `mtcars` data set (see `?mtcars` for background or a refresher).
+```{r}
+hp <- mtcars$hp;
+mpg <- mtcars$mpg;
+```
+
+Create a scatter plot of the data and state whether or not you think the variables `hp` and `mpg` are correlated, based on the plot (and explain what in the plot makes you think this).
+There is no need to do any statistics here-- just look at the data and describe what you see and what it suggests to you.
+
+```{r}
+library(ggplot2)
+ggplot(mtcars, aes(x = hp, y = mpg)) +
+  geom_point()
+cor(hp, mpg)
+```
+
+***
+
+Data seems very loosely negatively correlated, there seems to be some associated just at a glance
+
+***
+
+### Part b: testing for correlation
+
+Use a permutation test to assess whether or not the vectors `hp` and `mpg` are correlated.
+Pick a reasonable level $\alpha$ for your test and accept or reject the null hypothesis (letting $H$ be the RV representing horsepower and $M$ be the RV representing miles per gallon)
+
+$$
+H_0 : \operatorname{ Corr }( H, M ) = 0
+$$
+
+accordingly.
+Be sure to clearly explain your reasoning and give a basic explanation of the procedure you are following.
+Imagine that you are writing for a fellow STAT340 student, rather than for your professor or TA.
+
+__Hint:__ remember, the basic permutation recipe is to shuffle the data and then compute the test statistic on the shuffled data.
+In this case, the "right" test statistic is clearly... (you'll have to decide, but there are one or two pretty obvious choices), and shuffling the data just corresponds to permuting the entries of either `hp` or `mpg`.
+
+```{r}
+
+shuffled_mpg = sample(mpg, size = length(mpg), replace = FALSE)
+test_stat = cor(hp, mpg)
+
+permute_and_compute = function(){
+  shuffled_mpg = sample(mpg, size = length(mpg), replace = FALSE)
+  return(cor(hp, shuffled_mpg))
+}
+NMC = 1000
+trials = rep(0,NMC)
+for(i in 1:NMC){
+  trials[i] = permute_and_compute()
+}
+trials = trials < test_stat
+sum(trials) / NMC
+c( quantile(replicates, 0.025), quantile(replicates,0.975)  )
+
+```
+
+***
+
+I tested our shuffled data against the actual data, I found that of the 1000 trials every single estimate we made was lower than the actual variance. Our P-value was 0 in this case which shows there our estimate is significantly lower than the actual.
+
+***
+
+## 3) Estimating the variance
+
+Suppose that we have random variables $X_1,X_2,\dots$ independently and identically distributed (i.i.d.) according to a distribution with mean $\mu$ and variance $\sigma^2$.
+In lecture, we appealed to the CLT to say that as $n$ gets large, the distribution of
+$$
+\frac{ \bar{X} - \mu }{ \sqrt{ \sigma^2/n } }
+$$
+is well approximated by that of a standard normal.
+
+Next week, we will use this fact to obtain a (approximate) 95% confidence interval for the parameter $\mu$, since (letting $Z$ be a standard normal RV)
+$$
+0.95
+= \Pr[ -1.96 \le Z \le 1.96 ]
+\approx \Pr\left[ \bar{X} - 1.96 \sqrt{\sigma^2/n} \le \mu \le \bar{X} + 1.96 \sqrt{\sigma^2/n} \right].
+$$
+
+One small problem, which we will largely ignore in lecture (and which you may or may not have ignored in other introductory classes), is that we usually don't know the variance $\sigma^2$.
+Well, just as we can estimate the mean $\mu = \mathbb{E} X_1$, we can estimate the variance $\sigma^2 = \mathbb{E} (X_1 - \mu)^2$.
+
+Well, suppose that we estimate $\mu = \mathbb{E} X_1$ as
+$$
+\bar{X} = \frac{1}{n} \sum_{i=1}^n X_i,
+$$
+So by analogy, we should estimate $\sigma^2$ as
+$$
+\frac{1}{n} \sum_{i=1}^n (X_i - \mu )^2.
+$$
+Okay, but this includes the parameter $\mu$, which we don't know.
+Luckily, we have an estimate for the mean $\mu$-- the sample mean $\bar{X}$!
+So let's just plug in $\bar{X}$ for $\mu$ in the definition of the variance.
+
+This is the "plug-in principle", which we have mentioned once or twice in lecture.
+If a parameter shows up in a quantity you want to estimate, you just plug in your estimate for that parameter.
+$\mu = \mathbb{E} X$ is estimated by $\bar{X}$, so we plug in $\bar{X}$ for $\mu$ in the forumla for the variance.
+
+Following that logic, a reasonable choice of estimator for the variance is
+$$
+\hat{\sigma}^2
+= \frac{1}{n} \sum_{i=1}^n (X_i - \bar{X} )^2.
+$$
+
+### Part a: implementing an estimator for the variance
+
+Implement a function `sigma2hat` that takes a vector and returns the estimate $\hat{\sigma^2}$ defined in the equation above.
+
+```{r}
+sigma2hat <- function( data ) {
+  muhat <- mean(data);
+  new_data = (data - muhat)^2
+  sig_squared = sum(new_data) / length(data)
+  return(sig_squared)
+}
+
+```
+
+### Part b: assessing our estimator
+
+Okay, we've got an estimator for $\sigma^2$ implemented in R.
+How good is our estimator?
+Well, that turns out to be a harder question than it appears at first, and we'll have lots more to say about it in the coming lectures when we talk about prediction.
+
+For now, let's ask a simpler question.
+In lecture, we discussed the concept of bias (well, actually we discussed the concept of *unbiasedness*, the absence of bias...).
+If $S$ is an estimator of parameter $\theta$, then the bias of $S$ is given by
+$$
+\operatorname{bias}( S ) = \mathbb{E} S(X_1,X_2,\dots,X_n ) - \theta.
+$$
+
+That is, the bias is the average difference between the parameter we are trying to estimate and the actual value of our parameter.
+
+In statistics, we like *unbiased* estimators-- estimators whose bias is zero.
+That is, unbiased estimators are those whose expectation is equal to the parameter that they are supposed to estimate.
+We like this property because an unbiased estimator is at least correct "on average", in a certain sense.
+In the case of our estimator $\hat{\sigma}^2$, unbiasedness would mean $\mathbb{E} \hat{\sigma}^2 = \sigma^2$.
+
+We could do some math to assess whether or not $\hat{\sigma}^2$ is unbiased, but let's use Monte Carlo, instead.
+We're going to repeatedly generate data, and for each sample we generate, we will apply our estimator $\hat{\sigma}^2$ to that data and measure the difference between our estimate and the true value of $\sigma^2$.
+If we repeat that experiment many times, we can estimate the bias, using the same logic as we discussed in our lectures on Monte Carlo.
+
+Let's first write a function to run one instance of this experiment,
+then we'll write code to repeat the experiment multiple times.
+
+```{r}
+run_trial <- function( nsamp ) {
+  # nsamp is the sample size, n in the math displays above.
+
+  # Let's generate our data from a standard normal-- then we know the variance already! (\sigma^2 = 1)
+  data <- rnorm( nsamp ); # recall, mean=0,sd=1 is the default.
+
+  # TODO: write code to apply our estimator to the data
+  sig_est = sigma2hat(data)
+
+  # TODO: return the difference between our estimate and the truth.
+  dif = sig_est - var(data)
+  # The expectation of this quantity should be the bias, as defined above.
+  return(dif)
+
+
+}
+run_trial(20)
+```
+
+### Part c: assessing our estimator, part 2
+
+Okay, we have a function that generates one random sample and measures the difference between our estimate and the truth.
+
+To estimate the bias of $\hat{\sigma}^2$, we need to run this same experiment multiple times (i.e., run many Monte Carlo replicates of the experiment).
+
+Write a function to estimate the bias of $\hat{\sigma}^2$ by repeatedly calling `run_trial` and returning the average difference between $\hat{\sigma}^2$ and $\sigma^2$.
+Your function should take two arguments, a sample size `nsamp` (i.e, $n$ above) and a number of Monte Carlo replicates `NMC` (i.e, the number of times we should repeat our experiment.
+Your function should return a single number corresponding to your estimate of the bias (i.e., the difference between the estimate and the true value of $\sigma^2$).
+
+```{r}
+estimate_bias <- function( nsamp, NMC ) {
+  # nsamp is the sample size for use in run_trial above.
+  # NMC is the number of Monte Carlo replicates to use.
+
+  # TODO: code goes here.
+  # Hint: 
+  # create a vector in which to store the MC replicates.
+  # Then try a for loop with NMC iterations.
+  # in each iteration, call run_trial, and store the resulting
+  # difference in your vector.
+  # Then return the average of that vector.
+  trials = rep(0, NMC)
+  for( i in 1:NMC)
+    trials[i] = run_trial(nsamp)
+  return(sum(trials)/ NMC)
+
+  # Feel free to refer to the code from our Monte Carlo lectures for referece.
+
+}
+```
+
+Use your code to estimate the bias of our estimator $\hat{\sigma}^2$ using a sample size $n=20$ and based on 2,000 Monte Carlo replicates.
+
+__Hint:__ you should find that the bias is approximately $-1/n$, where $n$ is the sample size. Of course, owing to the randomness in your experiments, this will not be exact.
+
+```{r}
+
+estimate_bias(20, 2000)
+```
+
+### Part d: correcting bias
+
+You should have found above that $\hat{\sigma}^2$ is (slightly) negatively biased.
+That is, $\hat{\sigma}^2$ underestimates the true value of the variance.
+(for an extended discussion of the perils of under-estimating variance, see Nassim Taleb's book *The Black Swan: The Impact of the Highly Improbable*.)
+
+It turns out that we can show that
+$$
+\mathbb{E} \hat{\sigma}^2 = \frac{n-1}{n} \sigma^2.
+$$
+
+__Bonus:__ prove this! (This is not worth any additional points, just your own pride in accomplishment). __Hint:__ expand the square $(X_i - \bar{X})$ inside the sum in the definition of $\hat{\sigma}^2$, apply the definition of $\bar{X} = n^{-1} \sum_i X_i$, and use linearity of the expectation: $\mathbb{E} (aX_1 + b X_2) = a \mathbb{X_1} + b \mathbb{X_2}.$
+
+This suggests using the estimator
+$$
+\frac{n}{n-1} \hat{\sigma}^2,
+$$
+since in that case,
+$$
+\mathbb{E} \frac{n}{n-1} \hat{\sigma}^2
+= \frac{n}{n-1} \mathbb{E} \hat{\sigma}^2
+= \frac{n}{n-1} \frac{n-1}{n} \sigma^2 = \sigma^2.
+$$
+That is, our adjusted estimator is unbiased!
+
+Repeat the above Monte Carlo experiment to estimate the bias of this new estimator. You should find that it is quite close to zero (of course, it will still not be exactly zero, because of random variation).
+
+```{r}
+
+#TODO: define analogues of the above functions, this time for our adjusted estimator.
+# An easy approach is to define
+
+sigma2hat_adjusted <- function( data ) {
+  muhat <- mean(data);
+  new_data = (data - muhat)^2
+  sig_squared = sum(new_data) / length(data)
+  return(sig_squared)
+}
+
+run_trial_adjusted <- function( nsamp ) {
+  # nsamp is the sample size, n in the math displays above.
+
+  data <- rnorm( nsamp ); # recall, mean=0,sd=1 is the default.
+
+  sig_est = sigma2hat(data)
+  dif = sig_est - var(data)
+  return(dif)
+}
+
+estimate_bias_adjusted <- function( nsamp, NMC ) {
+  # nsamp is the sample size for use in run_trial above.
+  # NMC is the number of Monte Carlo replicates to use.
+
+  trials = rep(0, NMC)
+  for( i in 1:NMC)
+    trials[i] = run_trial(nsamp)
+  return(sum(trials)/ NMC)
+}
+
+```
+
+#### Coda (no questions, just a short aside): t-statistics
+
+So, suppose that we plug in our estimates $\bar{X}$ for $\mu$ and $\hat{\sigma}^2$ (or its adjusted version) for $\sigma^2$.
+Then we are saying that
+$$
+  \frac{ \bar{X} - \mu }{ \sqrt{ \hat{\sigma}^2/n }}
+$$
+is approximately normal.
+This is true, in that as $n$ grows, this quantity comes to have the same CDF as a standard normal.
+But this ignores one important point-- for smaller values of $n$, the random variation of $\hat{\sigma}^2$ actually matters, and the t-statistic is a better approximation.
+This is precisely why we use the t-statistic instead of a simple standard normal in testing situations where we don't know $\sigma^2$.
+You may have seen this in your introductory courses without fully understanding why-- now you know!
+
+This a nice example where when $n$ is large, it doesn't much matter what we do-- everything ends up being approximately normal for $n$ large.
+On the other hand, for finite $n$ (e.g, real-world situations where $n$ is on the order of 20 or 100), the different choices of approximation can matter a great deal.

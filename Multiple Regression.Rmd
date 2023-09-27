@@ -1,0 +1,244 @@
+
+---
+title: "STAT340 HW09: Prediction II, multiple regression"
+author: "Reid Sroda"
+date: "November 2022"
+output: html_document
+---
+
+***
+
+TODO: If you worked with any other students on this homework, please list their names and NetIDs here.
+
+***
+
+## Instructions
+
+Update the "author" and "date" fields in the header and
+complete the exercises below.
+Knit the document, and submit **both the HTML and RMD** files to Canvas.
+
+__Due date:__ November 17, 2022 at 11:59pm.
+
+---
+
+This homework will review our discussion of multiple regression from this week's lectures.
+
+## 1) More regression with `mtcars`
+
+In lecture, we worked briefly with the `mtcars` data set.
+Let's get more regression practice by working with it some more.
+
+### a) background
+
+Run `?mtcars` in the console (please __do not__ add it to this `Rmd` file) and briefly read the help page.
+Specifically, take note of the following:
+
+1. What is the source of this data?
+2. What is this data set measuring (i.e., what was the response variable in the original study, at least based on the brief description in the R documentation)?
+3. What predictors are available and what do they mean?
+
+***
+
+TODO: brief answers to the above three questions go here.
+
+1. Henderson and Velleman (1981), Building multiple regression models interactively. Biometrics, 37, 391–411.
+2. The 11 aspects of automobile design and performance for 32 automobiles.
+3. 
+[, 1]  mpg Miles/(US) gallon
+[, 2]	cyl	Number of cylinders
+[, 3]	disp	Displacement (cu.in.)
+[, 4]	hp	Gross horsepower
+[, 5]	drat	Rear axle ratio
+[, 6]	wt	Weight (1000 lbs)
+[, 7]	qsec	1/4 mile time
+[, 8]	vs	Engine (0 = V-shaped, 1 = straight)
+[, 9]	am	Transmission (0 = automatic, 1 = manual)
+[,10]	gear	Number of forward gears
+[,11]	carb	Number of carburetors
+
+You may want to also run `head(mtcars, 10)` or `View(mtcars)` to inspect the data frame briefly before moving on.
+
+### b) Fitting a model
+
+Use `lm` to run a regression of `mpg` on a few predictors in the data frame (choose two or three that you think would make a good model-- don't use all ten; we'll talk about why in later lectures).
+Make sure to include `data = mtcars` as a keyword argument to `lm` so that R knows what data frame to use.
+
+```{r}
+lm.mtcars <- lm(data = mtcars, mpg ~ vs + wt)
+plot(lm.mtcars,ask=F,which=1:2)
+```
+
+Briefly inspect the residuals plot by running `plot(lm.mtcars,ask=F,which=1:2)`.
+What do you observe, and what does it mean?
+
+***
+
+We can see that there are several outliers in the datset, indicating that the variance of these datapoints could be in question. Overall aside from those few points it seems relatively normal
+***
+
+### c) Interpreting the model
+
+View the summary of your model by uncommenting and running the code below.
+```{r}
+summary(lm.mtcars)
+```
+
+Pick one of your predictors and give an interpretation of the estimate and standard error for its coefficient.
+Be careful in your wording of the interpretation.
+
+***
+
+With the weight predictor, the estimate was -4.44 which would make sense because as a car gets heavier the friction increases causing it to get less miles per gallon. Meaning that according to our model, for every mile per gallon increase of 1, the weight of the vehicle decreases on average by 4,400. The standard error is 0.6 which is relatively low, this indicated how different our sample mean is likely to be different from the population mean.
+
+***
+
+Which coefficients are statistically significantly different from zero? How do you know?
+
+***
+
+the engine type and weight are both statistically significant, we can see this because of the p-value column, giving them values of .01 and 5.6e-08 which are both below .05
+
+***
+
+### d) Interpreting residuals
+
+What is the Residual Standard Error (RSE) for this model? How many degrees of freedom does it have?
+
+***
+
+2.78 on 29 degrees of freedom
+
+***
+
+What is the value of $R^2$ for this model? (__Hint:__ look at the output of `summary`) Give an interpretation of this value.
+
+***
+
+ 0.801, this gives us the coefficient of determination. Essentially saying that .801 of the variation in mpg can be explained by the variation in weight and engine type which is really really good.
+
+***
+
+### e) Adjusted $R^2$
+
+Briefly read about the adjusted $R^2$ [here](https://www.statisticshowto.com/probability-and-statistics/statistics-definitions/adjusted-r2/).
+What is the adjusted $R^2$ of this model and how does this differ from the usual $R^2$ value? (__Hint:__ again, look at the output of `summary`).
+
+***
+
+0.7873 but this is taking in the sense that we have 2 predictors, if we only looked at r^2 it would increase every time we added a factor, adjusted r^2 takes that additonal factor in account
+
+***
+
+### f) CIs for coefficients
+
+Read the documentation for the `confint` function, and use it to generate $95\%$ confidence intervals for the coefficients of your model.
+Give an interpretation of these confidence intervals.
+
+```{r}
+confint(lm.mtcars, level = .95 )
+```
+
+***
+
+We can say that 95% of random samples from the data will contain a multiple regression coefficient for engine type will fall from (0.7 - 5.58) and the weight coefficient will fall between (-5.5, -3.1)
+
+***
+
+## 2) the `cats` data set
+
+The `cats` data set, included in the `MASS` library, contains data recorded from 144 cats.
+Each row of the data set contains the body weight (`Bwt`, in kgs), heart weight (`Hwt`, in grams) and the sex (`Sex`, levels `'F'` and `'M'`) for one of the cats in the data set.
+
+__Part a: plotting the data__
+
+Create a scatter plot showing heart weight on the y-axis and body weight on the x-axis.
+Ignore the `Sex` variable in this plot.
+
+```{r}
+library(MASS)
+head(cats)
+```
+
+```{r}
+
+library(ggplot2)
+ggplot(cats, aes(x = Bwt, y = Hwt)) + 
+  geom_point() + 
+  ggtitle("Body Weight Vs Heart Weight for Cats") + 
+  xlab("Body Weight") + 
+  ylab("Heart Weight")
+
+```
+
+Briefly describe what you see. Is there a clear trend in the data?
+Seems to be a fairly high positive linear correlation between body weight and heart weight
+
+__Part b: fitting a linear model__
+
+Fit a linear regression model to predict cat heart weight from cat body weight (and using an intercept term, of course).
+
+```{r}
+
+lm(data = cats, Hwt ~ 1 + Bwt)
+
+```
+
+Examine the coefficients of your fitted model.
+What is the coefficient for the `Bwt` variable?
+Interpret this coefficient-- a unit change in body weight yields how much change in heart weight?
+
+
+***
+4.0341
+for every unit change of 1 kilogram in body weight yields roughly an increase in 4.03 grams of heart weight.
+
+***
+
+__Part c: back to plotting__
+
+Create the same plot from Part a above, but this time color the points in the scatter plot according to the `Sex` variable.
+You may use either `ggplot2` or the built-in R plotting tools, though I would recommend the former, for this.
+
+You should see a clear pattern. Describe it. A sentence or two is fine here.
+
+```{r}
+
+ggplot(cats, aes(x = Bwt, y = Hwt)) + 
+  geom_point(aes(colour = Sex)) + 
+  ggtitle("Body Weight Vs Heart Weight for Cats") + 
+  xlab("Body Weight") + 
+  ylab("Heart Weight")
+
+```
+
+***
+
+Seems as if female heart weight is far more difficult to predict based on body weight compared to males. It also seems as if female heart weight and body weight is generally smaller than males.
+
+***
+
+__Part d: adding `Sex` and an interaction__
+
+From looking at the data, it should be clear that the `Sex` variable has explanatory power in predicting heart weight, but it is also very correlated with body weight.
+
+Fit a new linear regression model, still predicting heart weight, but this time including both body weight and sex as predictors *and* an interaction term between body weight and sex.
+Take note of how R assigns `Sex` a dummy encoding.
+
+```{r}
+new_model = lm(data = cats, Hwt ~ 1 + Bwt + Sex + Bwt:Sex)
+summary(new_model)
+
+```
+
+Examine the outputs of your model.
+In particular, note the coefficients of `Sex` and the interaction between `Bwt` and `Sex`.
+Are both of these coefficients statistically significantly different from zero?
+How do you interpret the interaction term?
+
+***
+
+Yes they seem to be under the significance level of .05.. but barely. The interaction term has a p-value of .047 which means that we can say there is statistically significant evidence to show that the outcome of the Sex predictor depends on the Body Weight predictor.
+
+***
+
